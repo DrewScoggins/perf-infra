@@ -40,10 +40,10 @@ $python27ArgList = "/i", "python27.msi", "/quiet", "/norestart", "ADDLOCAL=Defau
 echo Start-Process -FilePath msiexec -ArgumentList $python27ArgList -Wait
 Start-Process -FilePath msiexec -ArgumentList $python27ArgList -Wait
 
-wget https://www.python.org/ftp/python/3.6.0/python-3.6.0.exe -OutFile python36.exe
-$python36ArgList = "/quiet", "PrependPath=1", "TargetDir=C:\Python36"
-echo Start-Process -FilePath python36.exe -ArgumentList $python36ArgList -Wait
-Start-Process -FilePath python36.exe -ArgumentList $python36ArgList -Wait
+wget https://www.python.org/ftp/python/3.5.3/python-3.5.3.exe -OutFile python35.exe
+$python35ArgList = "/quiet", "PrependPath=1", "TargetDir=C:\Python35"
+echo Start-Process -FilePath python35.exe -ArgumentList $python35ArgList -Wait
+Start-Process -FilePath python35.exe -ArgumentList $python35ArgList -Wait
 
 wget https://benchviewstorage.blob.core.windows.net/public/vs_community.exe -OutFile vs_community.exe
 #region VS Admin File
