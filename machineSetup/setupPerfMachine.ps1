@@ -139,6 +139,31 @@ $adminFileLoc = (Get-Item -Path ".\" -Verbose).FullName + "\adminFile.xml"
 $vsArgList = "/AdminFile", $adminFileLoc , "/Passive", "/NoRestart"
 echo Start-Process -FilePath vs_community.exe -ArgumentList $vsArgList -Wait
 Start-Process -FilePath vs_community.exe -ArgumentList $vsArgList -Wait
-
+#Add nuget.exe
 mkdir C:\Tools
 wget https://dist.nuget.org/win-x86-commandline/latest/nuget.exe -OutFile C:\Tools\nuget.exe
+#Copy down scripts used for starting up the Jenkins service
+$bootStrapCmd = "powershell.exe C:\jenkinsStart\bootstrap-windows.ps1"
+$Utf8NoBom = New-Object System.Text.UTF8Encoding $False
+[System.IO.File]::WriteAllLines("C:\bootstrap-windows.cmd", $bootStrapCmd, $Utf8NoBom)
+$bootStrapPs1 = @"
+Set-ExecutionPolicy Unrestricted -force
+# Download the main script
+`$scriptSrc = "https://ci2.dot.net/userContent/jenkins-windows-startup.ps1"
+`$scriptDest = "`$pwd\jenkins-windows-startup.ps1"
+Write-Output "Downloading primary script from `$scriptSrc to `$scriptDest"
+`$wc = New-Object System.Net.WebClient
+`$wc.DownloadFile(`$scriptSrc, `$scriptDest)
+Write-Output "Executing script"
+# One of the following
+& `$scriptDest -secret <machine_token_here>
+"@
+$secret = Read-Host -Prompt 'Please enter the Jenkins secret of the machine'
+$bootStrapPs1 = $bootStrapPs1.Replace("<machine_token_here>",$secret)
+mkdir C:\jenkinsStart
+$bootStrapPs1 | Out-File C:\jenkinsStart\bootstrap-windows.ps1
+mkdir C:\Jenkins
+#Setup the scheduled task to start the Jenkins service
+$action = New-ScheduledTaskAction -Execute 'C:\bootstrap-windows.cmd'
+$trigger = New-ScheduledTaskTrigger -AtLogOn
+Register-ScheduledTask -Action $action -Trigger $trigger -TaskName "Jenkins Startup" -Description "Startup the Jenkins Task"
