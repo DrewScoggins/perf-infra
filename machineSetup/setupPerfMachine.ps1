@@ -1,5 +1,12 @@
 ﻿#Set power scheme to high performance
 powercfg /S 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c
+powercfg /SETACVALUEINDEX SCHEME_MIN SUB_SLEEP STANDBYIDLE 0
+powercfg /SETACVALUEINDEX SCHEME_MIN SUB_VIDEO VIDEOIDLE 0
+powercfg /SETACVALUEINDEX SCHEME_MIN SUB_PROCESSOR PERFBOOSTMODE 0
+powercfg /SETACVALUEINDEX SCHEME_MIN SUB_PROCESSOR PROCTHROTTLEMAX 100
+powercfg /SETACVALUEINDEX SCHEME_MIN SUB_PROCESSOR PROCTHROTTLEMIN 100
+powercfg /SETACVALUEINDEX SCHEME_MIN SUB_PROCESSOR SYSCOOLPOL 1  
+powercfg /SETACVALUEINDEX SCHEME_MIN SUB_PROCESSOR THROTTLING 0  
 #region GIT Install Config
 $gitInstallLog = @"
 [Setup]
@@ -166,4 +173,5 @@ mkdir C:\Jenkins
 #Setup the scheduled task to start the Jenkins service
 $action = New-ScheduledTaskAction -Execute 'C:\bootstrap-windows.cmd'
 $trigger = New-ScheduledTaskTrigger -AtLogOn
-Register-ScheduledTask -Action $action -Trigger $trigger -TaskName "Jenkins Startup" -Description "Startup the Jenkins Task"
+$settings = New-ScheduledTaskSettingsSet -Priority 4
+Register-ScheduledTask -Action $action -Trigger $trigger -TaskName "Jenkins Startup" -Description "Startup the Jenkins Task" -Settings $settings -Force
