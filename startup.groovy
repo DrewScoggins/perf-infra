@@ -53,83 +53,85 @@ def osShortName = ['Windows 10': 'win10',
 [true, false].each { isPR ->
     ['Release'].each { configurationGroup ->
         ['Windows_NT'].each { os ->
-        def osGroup = osGroupMap[os]
-            def newJobName = "perf_JitBenchStart_${os.toLowerCase()}_${configurationGroup.toLowerCase()}"
+            ['x64', 'x86'].each { arch ->
+            def osGroup = osGroupMap[os]
+                def newJobName = "perf_JitBenchStart_${arch.toLowerCase()}_${os.toLowerCase()}_${configurationGroup.toLowerCase()}"
 
-            def newJob = job(Utilities.getFullJobName(project, newJobName, isPR)) {
-            
-                label('windows_clr_perf')
-                wrappers {
-                    credentialsBinding {
-                        string('BV_UPLOAD_SAS_TOKEN', 'CoreCLR Perf BenchView Sas')
+                def newJob = job(Utilities.getFullJobName(project, newJobName, isPR)) {
+                
+                    label('windows_clr_perf')
+                    wrappers {
+                        credentialsBinding {
+                            string('BV_UPLOAD_SAS_TOKEN', 'CoreCLR Perf BenchView Sas')
+                        }
                     }
-                }
 
-                if (isPR)
-                {
-                    parameters
+                    if (isPR)
                     {
-                        stringParam('BenchviewCommitName', '\${ghprbPullTitle}', 'The name that you will be used to build the full title of a run in Benchview.  The final name will be of the form <branch> private BenchviewCommitName')
+                        parameters
+                        {
+                            stringParam('BenchviewCommitName', '\${ghprbPullTitle}', 'The name that you will be used to build the full title of a run in Benchview.  The final name will be of the form <branch> private BenchviewCommitName')
+                        }
+                    }
+                    
+                    def configuration = 'Release'
+                    def runType = isPR ? 'private' : 'rolling'
+                    def benchViewName = isPR ? 'JitBenchStart private %BenchviewCommitName%' : 'JitBenchStart rolling %mydate%-%mytime%'
+                    
+                    steps {
+                        batchFile("C:\\Tools\\nuget.exe install Microsoft.BenchView.JSONFormat -Source http://benchviewtestfeed.azurewebsites.net/nuget -OutputDirectory \"%WORKSPACE%\" -Prerelease -ExcludeVersion")
+                        //Do this here to remove the origin but at the front of the branch name as this is a problem for BenchView
+                        //we have to do it all as one statement because cmd is called each time and we lose the set environment variable
+                        batchFile("For /f \"tokens=2-4 delims=/ \" %%a in ('date /t') do (set mydate=%%c-%%a-%%b)\n"+
+                                    "For /f \"tokens=1-2 delims=: \" %%a in ('time /t') do (set mytime=%%a:%%b)\n"+
+                                    "set timestamp=%mydate%T%mytime%:00Z\n"+
+                                    "py %WORKSPACE%\\Microsoft.BenchView.JSONFormat\\tools\\submission-metadata.py --name \"${benchViewName}\" --user-email \"dotnet-bot@microsoft.com\"\n"+
+                                    "py %WORKSPACE%\\Microsoft.BenchView.JSONFormat\\tools\\build.py git --type rolling --branch master --number %mydate%-%mytime% --source-timestamp \"%timestamp%\"")
+                        batchFile("py \"%WORKSPACE%\\Microsoft.BenchView.JSONFormat\\tools\\machinedata.py\"")
+                        batchFile("pushd JitBench_Timing\n" +
+                        "py startup.py --arch $(arch}")
+                        batchFile("popd")
+                        batchFile("py %WORKSPACE%\\Microsoft.BenchView.JSONFormat\\tools\\measurement.py csv -m \"Duration\" -u \"ms\" --better desc --drop-first-value --append startup.txt")
+                        batchFile("py %WORKSPACE%\\Microsoft.BenchView.JSONFormat\\tools\\measurement.py csv -m \"Duration\" -u \"ms\" --better desc --drop-first-value --append request.txt")
+                        batchFile("py %WORKSPACE%\\Microsoft.BenchView.JSONFormat\\tools\\measurement.py csv -m \"Duration\" -u \"ms\" --better desc --drop-first-value --append avgSteadyState.txt")
+                        batchFile("py %WORKSPACE%\\Microsoft.BenchView.JSONFormat\\tools\\measurement.py csv -m \"Duration\" -u \"ms\" --better desc --drop-first-value --append maxSteadyState.txt")
+                        batchFile("py %WORKSPACE%\\Microsoft.BenchView.JSONFormat\\tools\\measurement.py csv -m \"Duration\" -u \"ms\" --better desc --drop-first-value --append minSteadyState.txt")
+                        batchFile("py \"%WORKSPACE%\\Microsoft.BenchView.JSONFormat\\tools\\submission.py\" measurement.json " +
+                                        "--build build.json " +
+                                        "--machine-data machinedata.json " +
+                                        "--metadata submission-metadata.json " +
+                                        "--group \"JitBenchStart\" " +
+                                        "--type \"${runType}\" " +
+                                        "--config-name \"${configuration}\" " +
+                                        "--config Configuration \"${configuration}\" " +
+                                        "--config OS \"Windows_NT\" " +
+                                        "--arch \"${arch}\" " +
+                                        "--machinepool \"PerfSnake\"")
+                        batchFile("py \"%WORKSPACE%\\Microsoft.BenchView.JSONFormat\\tools\\upload.py\" submission.json --container coreclr")
+      
                     }
                 }
-                
-                def configuration = 'Release'
-                def runType = isPR ? 'private' : 'rolling'
-                def benchViewName = isPR ? 'JitBenchStart private %BenchviewCommitName%' : 'JitBenchStart rolling %mydate%-%mytime%'
-                
-                steps {
-                    batchFile("C:\\Tools\\nuget.exe install Microsoft.BenchView.JSONFormat -Source http://benchviewtestfeed.azurewebsites.net/nuget -OutputDirectory \"%WORKSPACE%\" -Prerelease -ExcludeVersion")
-                    //Do this here to remove the origin but at the front of the branch name as this is a problem for BenchView
-                    //we have to do it all as one statement because cmd is called each time and we lose the set environment variable
-                    batchFile("For /f \"tokens=2-4 delims=/ \" %%a in ('date /t') do (set mydate=%%c-%%a-%%b)\n"+
-                                "For /f \"tokens=1-2 delims=: \" %%a in ('time /t') do (set mytime=%%a:%%b)\n"+
-                                "set timestamp=%mydate%T%mytime%:00Z\n"+
-                                "py %WORKSPACE%\\Microsoft.BenchView.JSONFormat\\tools\\submission-metadata.py --name \"${benchViewName}\" --user-email \"dotnet-bot@microsoft.com\"\n"+
-                                "py %WORKSPACE%\\Microsoft.BenchView.JSONFormat\\tools\\build.py git --type rolling --branch master --number %mydate%-%mytime% --source-timestamp \"%timestamp%\"")
-                    batchFile("py \"%WORKSPACE%\\Microsoft.BenchView.JSONFormat\\tools\\machinedata.py\"")
-                    batchFile("pushd JitBench_Timing\n" +
-                    "py startup.py")
-                    batchFile("popd")
-                    batchFile("py %WORKSPACE%\\Microsoft.BenchView.JSONFormat\\tools\\measurement.py csv -m \"Duration\" -u \"ms\" --better desc --drop-first-value --append startup.txt")
-                    batchFile("py %WORKSPACE%\\Microsoft.BenchView.JSONFormat\\tools\\measurement.py csv -m \"Duration\" -u \"ms\" --better desc --drop-first-value --append request.txt")
-                    batchFile("py %WORKSPACE%\\Microsoft.BenchView.JSONFormat\\tools\\measurement.py csv -m \"Duration\" -u \"ms\" --better desc --drop-first-value --append avgSteadyState.txt")
-                    batchFile("py %WORKSPACE%\\Microsoft.BenchView.JSONFormat\\tools\\measurement.py csv -m \"Duration\" -u \"ms\" --better desc --drop-first-value --append maxSteadyState.txt")
-                    batchFile("py %WORKSPACE%\\Microsoft.BenchView.JSONFormat\\tools\\measurement.py csv -m \"Duration\" -u \"ms\" --better desc --drop-first-value --append minSteadyState.txt")
-                    batchFile("py \"%WORKSPACE%\\Microsoft.BenchView.JSONFormat\\tools\\submission.py\" measurement.json " +
-                                    "--build build.json " +
-                                    "--machine-data machinedata.json " +
-                                    "--metadata submission-metadata.json " +
-                                    "--group \"JitBenchStart\" " +
-                                    "--type \"${runType}\" " +
-                                    "--config-name \"${configuration}\" " +
-                                    "--config Configuration \"${configuration}\" " +
-                                    "--config OS \"Windows_NT\" " +
-                                    "--arch \"x64\" " +
-                                    "--machinepool \"PerfSnake\"")
-                    batchFile("py \"%WORKSPACE%\\Microsoft.BenchView.JSONFormat\\tools\\upload.py\" submission.json --container coreclr")
-  
+
+                // Set the label.
+                newJob.with {
+                    label('jitbench_perf')
                 }
-            }
+                // Set up standard options.
+                Utilities.standardJobSetup(newJob, project, isPR, "*/${branch}")
 
-            // Set the label.
-            newJob.with {
-                label('jitbench_perf')
-            }
-            // Set up standard options.
-            Utilities.standardJobSetup(newJob, project, isPR, "*/${branch}")
-
-            // Set up triggers
-            if (isPR) {
-                TriggerBuilder builder = TriggerBuilder.triggerOnPullRequest()
-                builder.setGithubContext("${os} Perf Tests")
-                builder.triggerOnlyOnComment()
-                builder.setCustomTriggerPhrase("(?i).*test\\W+${os}_JitBenchStart\\W+perf.*")
-                builder.triggerForBranch(branch)
-                builder.emitTrigger(newJob)
-            }
-            else {
-                // Set a trigger that will fire every 6th hour
-                Utilities.addPeriodicTrigger(newJob, '00 */6 * * *', true)
+                // Set up triggers
+                if (isPR) {
+                    TriggerBuilder builder = TriggerBuilder.triggerOnPullRequest()
+                    builder.setGithubContext("${os} Perf Tests")
+                    builder.triggerOnlyOnComment()
+                    builder.setCustomTriggerPhrase("(?i).*test\\W+${os}_JitBenchStart\\W+perf.*")
+                    builder.triggerForBranch(branch)
+                    builder.emitTrigger(newJob)
+                }
+                else {
+                    // Set a trigger that will fire every 6th hour
+                    Utilities.addPeriodicTrigger(newJob, '00 */6 * * *', true)
+                }
             }
         }
     }
