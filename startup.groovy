@@ -89,7 +89,7 @@ def osShortName = ['Windows 10': 'win10',
                                     "py %WORKSPACE%\\Microsoft.BenchView.JSONFormat\\tools\\build.py git --type rolling --branch master --number %mydate%-%mytime% --source-timestamp \"%timestamp%\"")
                         batchFile("py \"%WORKSPACE%\\Microsoft.BenchView.JSONFormat\\tools\\machinedata.py\"")
                         batchFile("pushd JitBench_Timing\n" +
-                        "py startup.py --arch $(arch}")
+                        "py startup.py --arch ${arch}")
                         batchFile("popd")
                         batchFile("py %WORKSPACE%\\Microsoft.BenchView.JSONFormat\\tools\\measurement.py csv -m \"Duration\" -u \"ms\" --better desc --drop-first-value --append startup.txt")
                         batchFile("py %WORKSPACE%\\Microsoft.BenchView.JSONFormat\\tools\\measurement.py csv -m \"Duration\" -u \"ms\" --better desc --drop-first-value --append request.txt")
