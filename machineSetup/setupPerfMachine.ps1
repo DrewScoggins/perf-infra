@@ -27,10 +27,10 @@ EnableSymlinks=Disabled
 "@
 #endregion
 $gitInstallLog > gitInstallInfo.log
-wget https://github.com/git-for-windows/git/releases/download/v2.12.0.windows.1/Git-2.12.0-64-bit.exe -OutFile git-2.12.exe
+wget https://github.com/git-for-windows/git/releases/download/v2.14.1.windows.1/Git-2.14.1-64-bit.exe -OutFile git-2.14.1.exe
 $gitArgList = "/LOADINF=gitInstallInfo.log", "/VERYSILENT"
-echo Start-Process -FilePath .\git-2.12.exe -ArgumentList $gitArgList -Wait
-Start-Process -FilePath .\git-2.12.exe -ArgumentList $gitArgList -Wait
+echo Start-Process -FilePath .\git-2.14.1.exe -ArgumentList $gitArgList -Wait
+Start-Process -FilePath .\git-2.14.1.exe -ArgumentList $gitArgList -Wait
 
 wget https://cmake.org/files/v3.7/cmake-3.7.2-win64-x64.msi -OutFile cmake-3.7.2.msi
 $cmakeArgList = "/i", "cmake-3.7.2.msi", "/quiet", "/norestart", "ADD_CMAKE_TO_PATH=System"
