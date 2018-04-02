@@ -166,12 +166,13 @@ Write-Output "Executing script"
 & `$scriptDest -secret <machine_token_here>
 "@
 $secret = Read-Host -Prompt 'Please enter the Jenkins secret of the machine'
+$labPassword = Read-Host -Prompt 'Please enter the admin password for the lab machine'
 $bootStrapPs1 = $bootStrapPs1.Replace("<machine_token_here>",$secret)
 mkdir C:\jenkinsStart
 $bootStrapPs1 | Out-File C:\jenkinsStart\bootstrap-windows.ps1
 mkdir C:\Jenkins
 #Setup the scheduled task to start the Jenkins service
 $action = New-ScheduledTaskAction -Execute 'C:\bootstrap-windows.cmd'
-$trigger = New-ScheduledTaskTrigger -AtLogOn
+$trigger = New-ScheduledTaskTrigger -AtStartup
 $settings = New-ScheduledTaskSettingsSet -Priority 4
-Register-ScheduledTask -Action $action -Trigger $trigger -TaskName "Jenkins Startup" -Description "Startup the Jenkins Task" -Settings $settings -Force
+Register-ScheduledTask -Action $action -Trigger $trigger -TaskName "Jenkins Startup" -Description "Startup the Jenkins Task" -Settings $settings -Force -User Administrator -Password $labPassword
